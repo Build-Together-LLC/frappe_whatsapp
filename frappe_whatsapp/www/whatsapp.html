@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{{ _("WhatsApp") }}</title>
+	<link rel="stylesheet" href="/assets/frappe_whatsapp/personal_whatsapp/personal_whatsapp.css">
+	<script>
+		window.frappe = { csrf_token: "{{ csrf_token }}", datetime: { convert_to_user_tz: function (value) { return value; } } };
+	</script>
+</head>
+<body>
+	<div id="personal-whatsapp-root"></div>
+	<script src="/assets/frappe_whatsapp/personal_whatsapp/personal_whatsapp.js"></script>
+</body>
+</html>

@@ -288,7 +288,7 @@ def get_whatsapp_msg(chat_id, session):
                 "group_id" if conversation_type == "Group" else "user_id": chat_id,
             },
             fields=["*"],
-            order_by="creation asc",
+            order_by="creation desc",
         )
         return all_chat
     raise frappe.PermissionError("You are not allowed to see this message")

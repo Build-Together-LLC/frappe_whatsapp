@@ -1,0 +1,10 @@
+import type { SVGProps } from 'react';
+const SvgArchive = (props: SVGProps<SVGSVGElement>) => (
+  <svg width={20} height={20} fill="none" {...props}>
+    <path
+      fill="#00a884"
+      d="m18.54 3.23-1.39-1.68C16.88 1.21 16.47 1 16 1H4c-.47 0-.88.21-1.16.55L1.46 3.23C1.17 3.57 1 4.02 1 4.5V17c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V4.5c0-.48-.17-.93-.46-1.27ZM4.24 3h11.52l.81.97H3.44l.8-.97ZM3 17V6h14v11H3Zm8.45-9h-2.9v3H6l4 4 4-4h-2.55V8Z"
+    />
+  </svg>
+);
+export default SvgArchive;
