@@ -1,8 +1,12 @@
 # Copyright (c) 2022, Shridhar Patil and contributors
 # For license information, please see license.txt
 
+from urllib.parse import urlparse
+
 import frappe
 from frappe.model.document import Document
+
+LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "host.docker.internal"}
 
 
 class WhatsAppSettings(Document):
@@ -26,4 +30,10 @@ def test_waha_connection():
 		return {"ok": False, "message": frappe._("WAHA rejected the API key.")}
 	if not response.ok:
 		return {"ok": False, "message": frappe._("WAHA returned {0}.").format(response.status_code)}
-	return {"ok": True, "message": frappe._("Connected to WAHA.")}
+	message = frappe._("Connected to WAHA.")
+	host = urlparse(get_waha_host())
+	if host.scheme == "http" and host.hostname not in LOCAL_HOSTS:
+		message += " " + frappe._(
+			"Warning: this address uses http, so the API key travels unencrypted. Use https."
+		)
+	return {"ok": True, "message": message}

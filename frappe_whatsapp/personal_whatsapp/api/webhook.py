@@ -85,6 +85,7 @@ def download_media(url):
                 "doctype": "File",
                 "file_name": file_name,
                 "content": response.content,
+                "is_private": 1,
             }
         ).insert(ignore_permissions=True)
         return file_doc
@@ -102,6 +103,7 @@ def download_profile_picture(url):
                 "doctype": "File",
                 "file_name": file_name,
                 "content": response.content,
+                "is_private": 1,
             }
         ).insert(ignore_permissions=True)
         return file_doc
@@ -565,9 +567,7 @@ def handle_chat_archive(data):
 # frappe_whatsapp.personal_whatsapp.api.webhook.handle
 def is_valid_signature(raw_body, signature):
     secret = get_webhook_secret()
-    if not secret:
-        return True
-    if not signature:
+    if not secret or not signature:
         return False
     expected = hmac.new(secret.encode(), raw_body, hashlib.sha512).hexdigest()
     return hmac.compare_digest(expected, signature)
@@ -575,6 +575,8 @@ def is_valid_signature(raw_body, signature):
 
 @frappe.whitelist(allow_guest=True)
 def handle(**kwargs):
+    if not get_webhook_secret():
+        frappe.throw("Webhook secret is not configured", frappe.AuthenticationError)
     signature = frappe.get_request_header("X-Webhook-Hmac")
     if not is_valid_signature(frappe.request.get_data(), signature):
         frappe.throw("Invalid webhook signature", frappe.AuthenticationError)
@@ -595,3 +597,11 @@ def handle(**kwargs):
         handle_message_ack_event(kwargs)
     if event == "chat.archive":
         handle_chat_archive(kwargs)
+
+
+def delete_old_webhook_logs():
+    days = int(frappe.conf.get("waha_webhook_log_days") or 14)
+    frappe.db.delete(
+        "WhatsApp Webhook Log",
+        {"creation": ("<", frappe.utils.add_days(frappe.utils.now(), -days))},
+    )

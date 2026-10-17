@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Aman Kumar and contributors
 # For license information, please see license.txt
 import json
+import re
 
 import frappe
 import requests
@@ -13,6 +14,7 @@ from frappe_whatsapp.personal_whatsapp.config import (
     get_webhook_secret,
     get_webhook_base_url,
 )
+from frappe_whatsapp.personal_whatsapp.security import require_admin, require_session_access, valid_session
 from frappe_whatsapp.personal_whatsapp.utils import waha_api_dispatcher
 from frappe_whatsapp.personal_whatsapp.utils import is_admin_user
 
@@ -49,6 +51,10 @@ class WhatsAppSession(Document):
 
     @frappe.whitelist()
     def start(self):
+        if not get_webhook_secret():
+            frappe.throw(
+                "Set the Webhook Secret in WhatsApp Settings before starting a session."
+            )
         url = "/api/sessions/start"
         webhook_url = (
             f"{get_webhook_base_url()}/api/method/frappe_whatsapp.personal_whatsapp.api.webhook.handle"
@@ -90,25 +96,29 @@ class WhatsAppSession(Document):
             return response.text
 
 
+QR_PATH = re.compile(r"^/api/([A-Za-z0-9_-]+)/auth/qr(\?[A-Za-z0-9_=&.%+ -]*)?$")
+
+
 @frappe.whitelist()
 def get_qr_code(url: str):
-    updated_url = f"{get_waha_host()}{url}"
+    match = QR_PATH.match(url or "")
+    if not match:
+        frappe.throw("Invalid QR code path", frappe.ValidationError)
+
+    require_session_access(match.group(1))
+
     headers = {
         "X-Api-Key": get_waha_api_key(),
         "Content-Type": "application/json",
     }
     try:
-        response = requests.get(updated_url, headers=headers)
-        if response.status_code == 200:
-            return Response(
-                response.content, mimetype=response.headers.get("Content-Type")
-            )
-        else:
-            frappe.throw(
-                f"Failed to fetch image from WAHA. Status code: {response.status_code}"
-            )
-    except Exception as e:
-        frappe.throw(f"Error while fetching image: {str(e)}")
+        response = requests.get(f"{get_waha_host()}{url}", headers=headers, timeout=15)
+    except requests.RequestException:
+        frappe.log_error(frappe.get_traceback(), "WhatsApp QR code")
+        frappe.throw("Could not fetch the QR code from WAHA")
+    if response.status_code != 200:
+        frappe.throw(f"Failed to fetch image from WAHA. Status code: {response.status_code}")
+    return Response(response.content, mimetype=response.headers.get("Content-Type"))
 
 
 def get_session_present_in_local(local_session, server_session):
@@ -168,6 +178,7 @@ def check_is_system_manager(user):
 
 @frappe.whitelist()
 def get_selected_session(session):
+    valid_session(session)
     user = frappe.session.user
     is_system_manager = check_is_system_manager(user)
 
@@ -231,6 +242,7 @@ def get_session_present_in_local(local_session, server_session):
 
 @frappe.whitelist()
 def assign_user_to_session(user, session, full_access=False):
+    require_admin()
     session_doc = frappe.get_doc("WhatsApp Session", session)
     user_exists = False
     for row in session_doc.session_assign_to:
@@ -257,6 +269,7 @@ def assign_user_to_session(user, session, full_access=False):
 
 @frappe.whitelist()
 def un_assign_user_to_session(user, session):
+    require_admin()
     session_doc = frappe.get_doc("WhatsApp Session", session)
     user_exists = False
     for row in session_doc.session_assign_to:
