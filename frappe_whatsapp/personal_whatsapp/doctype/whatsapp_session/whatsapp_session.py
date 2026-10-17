@@ -96,7 +96,7 @@ class WhatsAppSession(Document):
             return response.text
 
 
-QR_PATH = re.compile(r"^/api/([A-Za-z0-9_-]+)/auth/qr(\?[A-Za-z0-9_=&.%+ -]*)?$")
+QR_PATH = re.compile(r"^/api/([A-Za-z0-9_-]+)/auth/qr(\?[A-Za-z0-9_=&.%+: -]*)?$")
 
 
 @frappe.whitelist()

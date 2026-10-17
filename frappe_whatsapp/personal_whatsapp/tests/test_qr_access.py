@@ -22,6 +22,19 @@ class TestQrAccess(IntegrationTestCase):
             with self.subTest(url=url):
                 self.assertRaises(frappe.ValidationError, get_qr_code, url)
 
+    def test_the_link_the_webhook_stores_is_accepted(self):
+        class Reply:
+            status_code = 200
+            content = b"png"
+            headers = {"Content-Type": "image/png"}
+
+        link = "/api/default/auth/qr?t = 2026-10-18 01:02:01.612391"
+        with patch.object(whatsapp_session, "get_waha_host", return_value="http://waha.test:3000"), patch.object(
+            whatsapp_session.requests, "get", return_value=Reply()
+        ) as get:
+            get_qr_code(link)
+            self.assertEqual(get.call_args.args[0], "http://waha.test:3000" + link)
+
     def test_user_without_access_is_refused(self):
         with patch.object(whatsapp_session, "is_admin_user", return_value=False):
             with self.set_user("Guest"):
