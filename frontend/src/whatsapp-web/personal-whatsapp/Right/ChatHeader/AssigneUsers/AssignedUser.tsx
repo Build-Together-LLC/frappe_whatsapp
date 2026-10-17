@@ -61,7 +61,7 @@ const AssignedUser = () => {
                     <div
                       className={`${colors[usersWithColors[assign.user_assign]]?.text} tw-h-[40px] tw-w-[40px] tw-rounded-full tw-flex tw-shadow-md tw-items-center tw-justify-center ${colors[usersWithColors[assign.user_assign]]?.color} tw-opacity-[.80]`}
                     >
-                      {assign.full_name
+                      {(assign.full_name || assign.user_assign)
                         .split(' ')
                         .slice(0, 2)
                         .map((word: string): string => word[0])}
@@ -72,7 +72,7 @@ const AssignedUser = () => {
                           'tw-font-semibold tw-text-gray-800 tw-text-sm'
                         }
                       >
-                        {assign.full_name}
+                        {assign.full_name || assign.user_assign}
                       </span>
                       <span className={'tw-text-xs tw-text-gray-500'}>
                         {assign.user_assign}

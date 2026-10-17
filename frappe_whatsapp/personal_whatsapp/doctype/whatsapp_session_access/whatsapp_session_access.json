@@ -14,19 +14,21 @@
    "fieldname": "user_assign",
    "fieldtype": "Link",
    "label": "User Assign ",
-   "options": "User"
+   "options": "User",
+   "in_list_view": 1
   },
   {
    "default": "0",
    "fieldname": "all_access",
    "fieldtype": "Check",
-   "label": "All Access"
+   "label": "All Access",
+   "in_list_view": 1
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-11-21 22:04:21.623243",
+ "modified": "2026-10-17 23:50:00.000000",
  "modified_by": "Administrator",
  "module": "Personal Whatsapp",
  "name": "WhatsApp Session Access",

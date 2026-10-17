@@ -34,7 +34,7 @@ const AssignToUser = () => {
     ? query === ''
       ? data.results || data.message
       : (data.results || data.message).filter((user: any) =>
-          user.description
+          (user.description || user.label || user.value || '')
             .toLowerCase()
             .replace(/\s+/g, '')
             .includes(query.toLowerCase().replace(/\s+/g, ''))
@@ -169,7 +169,7 @@ const AssignToUser = () => {
                       <div
                         className={`${colors[usersWithColors[user.value]]?.text} tw-h-[40px] tw-w-[40px] tw-rounded-full tw-flex tw-shadow-md tw-items-center tw-justify-center ${colors[usersWithColors[user.value]]?.color} tw-opacity-[.80]`}
                       >
-                        {user.description
+                        {(user.description || user.label || user.value)
                           .split(' ')
                           .slice(0, 2)
                           .map((word: string): string => word[0])}
@@ -182,7 +182,7 @@ const AssignToUser = () => {
                             'tw-font-semibold tw-text-gray-800 tw-text-sm'
                           }
                         >
-                          {user.description}
+                          {user.description || user.label || user.value}
                         </span>
                         <span className={'tw-text-xs tw-text-gray-500'}>
                           {user.value}
