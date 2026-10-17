@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 import json
 import re
+from urllib.parse import quote
 
 import frappe
 import requests
@@ -111,6 +112,11 @@ def get_qr_code(url: str):
         "X-Api-Key": get_waha_api_key(),
         "Content-Type": "application/json",
     }
+    # WAHA holds a QR request for 10 seconds when the session is not waiting for a scan
+    status = requests.get(f"{get_waha_host()}/api/sessions/{quote(match.group(1), safe='')}", headers=headers, timeout=5)
+    current = status.json().get("status") if status.ok else None
+    if current and current != "SCAN_QR_CODE":
+        frappe.throw(f"No QR code: the session is {current}", frappe.ValidationError)
     try:
         response = requests.get(f"{get_waha_host()}{url}", headers=headers, timeout=15)
     except requests.RequestException:
