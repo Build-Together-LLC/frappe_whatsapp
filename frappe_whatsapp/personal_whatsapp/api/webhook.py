@@ -545,7 +545,9 @@ def handle(**kwargs):
         log.insert(ignore_permissions=True)
     except:
         pass
-    event = kwargs["event"]
+    event = kwargs.get("event")
+    if not event:
+        frappe.throw("Missing event", frappe.ValidationError)
     if event == "session.status":
         handle_session_status_event(kwargs)
     if event == "message":
