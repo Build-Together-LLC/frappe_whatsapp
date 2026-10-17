@@ -1,0 +1,203 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-08-08 19:57:13.943354",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "conversation_type",
+  "message_type",
+  "session",
+  "user_id",
+  "group_id",
+  "message_id",
+  "column_break_qgid",
+  "status",
+  "type",
+  "body",
+  "media_details_section",
+  "media_url",
+  "file_name",
+  "mime_type",
+  "quoted_message_id",
+  "column_break_teje",
+  "caption",
+  "scheduled_at",
+  "section_break_eqmz",
+  "options",
+  "column_break_iquy",
+  "multiple_answers",
+  "poll_name",
+  "section_break_wkzg",
+  "error"
+ ],
+ "fields": [
+  {
+   "fieldname": "session",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Session",
+   "options": "WhatsApp Session",
+   "reqd": 1
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Incoming\nOutgoing",
+   "reqd": 1
+  },
+  {
+   "fieldname": "user_id",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Contact Id",
+   "options": "WhatsApp Chat",
+   "reqd": 1
+  },
+  {
+   "fieldname": "group_id",
+   "fieldtype": "Link",
+   "label": "Group Id",
+   "options": "WhatsApp Chat"
+  },
+  {
+   "fieldname": "message_id",
+   "fieldtype": "Data",
+   "label": "Message Id"
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Text",
+   "in_list_view": 1,
+   "label": "Message Body",
+   "mandatory_depends_on": "eval:doc.media_type==\"Text\""
+  },
+  {
+   "fieldname": "conversation_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Conversation Type",
+   "options": "Personal\nGroup",
+   "reqd": 1
+  },
+  {
+   "fieldname": "mime_type",
+   "fieldtype": "Data",
+   "label": "Mime Type"
+  },
+  {
+   "fieldname": "media_url",
+   "fieldtype": "Data",
+   "label": "Media url"
+  },
+  {
+   "fieldname": "file_name",
+   "fieldtype": "Data",
+   "label": "File Name"
+  },
+  {
+   "fieldname": "caption",
+   "fieldtype": "Small Text",
+   "label": "Caption"
+  },
+  {
+   "fieldname": "column_break_qgid",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "message_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Message Type",
+   "options": "Text\nPoll\nImage\nVideo\nAudio\nDocument",
+   "reqd": 1
+  },
+  {
+   "fieldname": "poll_name",
+   "fieldtype": "Data",
+   "label": "Poll Name"
+  },
+  {
+   "default": "0",
+   "fieldname": "multiple_answers",
+   "fieldtype": "Check",
+   "label": "Multiple Answers"
+  },
+  {
+   "fieldname": "options",
+   "fieldtype": "Small Text",
+   "label": "Options"
+  },
+  {
+   "default": "Unknown",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Status",
+   "options": "Unknown\nPending\nSent\nDelivered\nRead\nReceived\nSeen\nScheduled\nFailed",
+   "reqd": 1
+  },
+  {
+   "fieldname": "media_details_section",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_teje",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_eqmz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_iquy",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_wkzg",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "error",
+   "fieldtype": "Code",
+   "label": "Error",
+   "read_only": 1
+  },
+  {
+   "fieldname": "scheduled_at",
+   "fieldtype": "Datetime",
+   "label": " Scheduled At"
+  },
+  {
+   "fieldname": "quoted_message_id",
+   "fieldtype": "Data",
+   "label": "Quoted Message Id"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2024-11-12 10:20:16.114769",
+ "modified_by": "Administrator",
+ "module": "Personal Whatsapp",
+ "name": "WhatsApp Chat Message",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "read_only": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

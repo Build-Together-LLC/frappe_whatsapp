@@ -1,0 +1,63 @@
+{
+ "doctype": "Workspace",
+ "name": "Personal Whatsapp",
+ "label": "Personal Whatsapp",
+ "title": "Personal Whatsapp",
+ "module": "Personal Whatsapp",
+ "public": 1,
+ "is_hidden": 0,
+ "sequence_id": 50.0,
+ "icon": "chat",
+ "indicator_color": "green",
+ "content": "[{\"id\": \"h1\", \"type\": \"header\", \"data\": {\"text\": \"<span class=\\\"h4\\\">Personal WhatsApp</span>\", \"col\": 12}}, {\"id\": \"s1\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Inbox\", \"col\": 3}}, {\"id\": \"s2\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Session\", \"col\": 3}}, {\"id\": \"s3\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Chat\", \"col\": 3}}, {\"id\": \"s4\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Chat Message\", \"col\": 3}}, {\"id\": \"s5\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Contact\", \"col\": 3}}, {\"id\": \"s6\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Group\", \"col\": 3}}, {\"id\": \"s7\", \"type\": \"shortcut\", \"data\": {\"shortcut_name\": \"WhatsApp Webhook Log\", \"col\": 3}}]",
+ "shortcuts": [
+  {
+   "label": "WhatsApp Inbox",
+   "type": "Page",
+   "link_to": "whatsapp-inbox",
+   "color": "Green"
+  },
+  {
+   "label": "WhatsApp Session",
+   "type": "DocType",
+   "link_to": "WhatsApp Session",
+   "doc_view": "List"
+  },
+  {
+   "label": "WhatsApp Chat",
+   "type": "DocType",
+   "link_to": "WhatsApp Chat",
+   "doc_view": "List"
+  },
+  {
+   "label": "WhatsApp Chat Message",
+   "type": "DocType",
+   "link_to": "WhatsApp Chat Message",
+   "doc_view": "List"
+  },
+  {
+   "label": "WhatsApp Contact",
+   "type": "DocType",
+   "link_to": "WhatsApp Contact",
+   "doc_view": "List"
+  },
+  {
+   "label": "WhatsApp Group",
+   "type": "DocType",
+   "link_to": "WhatsApp Group",
+   "doc_view": "List"
+  },
+  {
+   "label": "WhatsApp Webhook Log",
+   "type": "DocType",
+   "link_to": "WhatsApp Webhook Log",
+   "doc_view": "List"
+  }
+ ],
+ "links": [],
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}

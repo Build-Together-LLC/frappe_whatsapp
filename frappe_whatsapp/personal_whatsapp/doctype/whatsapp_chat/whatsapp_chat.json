@@ -1,0 +1,111 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "field:chat_id",
+ "creation": "2024-08-12 10:42:22.041793",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "chat_id",
+  "chat_name",
+  "type",
+  "profile_picture",
+  "mark_as_read",
+  "members",
+  "archived_by",
+  "chat_assign_to",
+  "unread_count",
+  "last_message"
+ ],
+ "fields": [
+  {
+   "fieldname": "chat_id",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Chat Id",
+   "reqd": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "chat_name",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Chat Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "profile_picture",
+   "fieldtype": "Data",
+   "label": "Profile Picture"
+  },
+  {
+   "default": "1",
+   "fieldname": "mark_as_read",
+   "fieldtype": "Check",
+   "label": "Mark As Read"
+  },
+  {
+   "fieldname": "members",
+   "fieldtype": "Table",
+   "label": "Members",
+   "options": "WhatsApp Group Member"
+  },
+  {
+   "fieldname": "archived_by",
+   "fieldtype": "Table",
+   "label": "Archived By",
+   "options": "WhatsApp Archived Chat"
+  },
+  {
+   "fieldname": "chat_assign_to",
+   "fieldtype": "Table",
+   "label": "Chat Assign To",
+   "options": "WhatsApp Contact Access"
+  },
+  {
+   "fieldname": "type",
+   "fieldtype": "Select",
+   "label": "Type",
+   "options": "Group\nContact",
+   "reqd": 1
+  },
+  {
+   "fieldname": "unread_count",
+   "fieldtype": "Table",
+   "label": "Unread Count",
+   "options": "WhatsApp Unread Count"
+  },
+  {
+   "fieldname": "last_message",
+   "fieldtype": "Table",
+   "label": "Last Message",
+   "options": "WhatsApp Last Message"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-03-25 23:01:55.062943",
+ "modified_by": "Administrator",
+ "module": "Personal Whatsapp",
+ "name": "WhatsApp Chat",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "read_only": 1,
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

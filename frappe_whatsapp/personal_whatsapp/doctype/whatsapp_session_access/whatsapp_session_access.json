@@ -1,0 +1,38 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-11-18 19:38:06.795018",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "user_assign",
+  "all_access"
+ ],
+ "fields": [
+  {
+   "fieldname": "user_assign",
+   "fieldtype": "Link",
+   "label": "User Assign ",
+   "options": "User"
+  },
+  {
+   "default": "0",
+   "fieldname": "all_access",
+   "fieldtype": "Check",
+   "label": "All Access"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-11-21 22:04:21.623243",
+ "modified_by": "Administrator",
+ "module": "Personal Whatsapp",
+ "name": "WhatsApp Session Access",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}

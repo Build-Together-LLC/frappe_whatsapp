@@ -1,0 +1,14 @@
+{
+ "doctype": "Page",
+ "module": "Personal Whatsapp",
+ "name": "whatsapp-inbox",
+ "page_name": "whatsapp-inbox",
+ "standard": "Yes",
+ "title": "WhatsApp Inbox",
+ "system_page": 0,
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}
