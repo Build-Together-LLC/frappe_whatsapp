@@ -173,7 +173,8 @@ const appActions = (
       setState((state: any) => {
         return {
           ...state,
-          selectedSessionDetail,
+          selectedSessionDetail:
+            selectedSessionDetail ?? state.selectedSessionDetail,
         };
       });
     },
