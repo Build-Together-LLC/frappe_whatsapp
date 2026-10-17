@@ -16,8 +16,9 @@ def sign(body, secret):
 
 class TestWebhookSignature(IntegrationTestCase):
     @patch.object(webhook, "get_webhook_secret", return_value=None)
-    def test_no_secret_accepts_everything(self, _):
-        self.assertTrue(webhook.is_valid_signature(BODY, None))
+    def test_no_secret_rejects_everything(self, _):
+        self.assertFalse(webhook.is_valid_signature(BODY, None))
+        self.assertFalse(webhook.is_valid_signature(BODY, sign(BODY, SECRET)))
 
     @patch.object(webhook, "get_webhook_secret", return_value=SECRET)
     def test_valid_signature(self, _):

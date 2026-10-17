@@ -5,7 +5,13 @@ import frappe
 from frappe_whatsapp.personal_whatsapp.doctype.whatsapp_session.whatsapp_session import (
     check_is_system_manager,
 )
-from frappe_whatsapp.personal_whatsapp.utils import waha_api_dispatcher
+from frappe_whatsapp.personal_whatsapp.security import (
+    require_admin,
+    require_session_access,
+    valid_chat_id,
+    valid_session,
+)
+from frappe_whatsapp.personal_whatsapp.utils import is_admin_user, waha_api_dispatcher
 
 
 class OrderBy(Enum):
@@ -25,6 +31,7 @@ def get_list(
     is_archived: bool = False,
     create_new_groups: bool = False,
 ):
+    require_session_access(session)
     user = frappe.session.user
     query_data = {
         "session": session,
@@ -137,6 +144,8 @@ def is_group_contact_access_available(chat_id: str, session: str):
 
 @frappe.whitelist()
 def archive_user(chat_id: str, session: str):
+    valid_session(session)
+    valid_chat_id(chat_id)
     if not is_group_contact_access_available(chat_id, session):
         raise frappe.PermissionError("You are not allowed to archive this user")
     doctype_name = "WhatsApp Chat"
@@ -153,6 +162,8 @@ def archive_user(chat_id: str, session: str):
 
 @frappe.whitelist()
 def unarchive_user(chat_id: str, session: str):
+    valid_session(session)
+    valid_chat_id(chat_id)
     if not is_group_contact_access_available(chat_id, session):
         raise frappe.PermissionError("You are not allowed to un archive this user")
     doctype_name = "WhatsApp Chat"
@@ -170,6 +181,8 @@ def unarchive_user(chat_id: str, session: str):
 
 @frappe.whitelist()
 def assign_user_to_contact(user: str, chat_id: str):
+    require_admin()
+    valid_chat_id(chat_id)
     doctype_name = "WhatsApp Chat"
     contact_doc = frappe.get_doc(doctype_name, chat_id)
     chat_assign_field = "chat_assign_to"
@@ -196,6 +209,8 @@ def assign_user_to_contact(user: str, chat_id: str):
 
 @frappe.whitelist()
 def un_assign_user_to_contact(user: str, chat_id: str):
+    require_admin()
+    valid_chat_id(chat_id)
     doctype_name = "WhatsApp Chat"
     contact_doc = frappe.get_doc(doctype_name, chat_id)
     chat_assign_field = "chat_assign_to"
@@ -224,6 +239,8 @@ def un_assign_user_to_contact(user: str, chat_id: str):
 
 @frappe.whitelist()
 def get_detail(chat_id: str, session: str):
+    valid_session(session)
+    valid_chat_id(chat_id)
     doctype_name = "WhatsApp Chat"
     user = frappe.session.user
     is_system_manager = check_is_system_manager(user)
@@ -265,10 +282,16 @@ def get_detail(chat_id: str, session: str):
 
 @frappe.whitelist()
 def Mark_as_read_conditional(chat_id: str, mark_as_read: bool):
+    valid_chat_id(chat_id)
     doctype_name = "WhatsApp Chat"
     chat_doc = frappe.get_doc(doctype_name, {"chat_id": chat_id})
-    chat_doc.mark_as_read = mark_as_read
-    chat_doc.save()
+    if not (
+        is_admin_user()
+        or any(row.user_assign == frappe.session.user for row in chat_doc.chat_assign_to)
+    ):
+        raise frappe.PermissionError("You are not allowed to change this chat")
+    chat_doc.mark_as_read = frappe.parse_json(mark_as_read) if isinstance(mark_as_read, str) else mark_as_read
+    chat_doc.save(ignore_permissions=True)
     frappe.db.commit()
 
     return chat_doc

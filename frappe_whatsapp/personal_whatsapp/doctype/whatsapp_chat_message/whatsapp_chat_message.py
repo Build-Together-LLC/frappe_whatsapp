@@ -1,6 +1,7 @@
 # Copyright (c) 2026, Aman Kumar and contributors
 # For license information, please see license.txt
 
+import base64
 import json
 import random
 import time
@@ -22,6 +23,25 @@ from frappe_whatsapp.personal_whatsapp.api.groups_and_contacts import (
     is_group_contact_access_available,
 )
 from frappe_whatsapp.personal_whatsapp.utils import waha_api_dispatcher
+
+
+MAX_MEDIA_BYTES = 16 * 1024 * 1024
+
+
+def read_media_file(file_url):
+    if not file_url or not file_url.startswith(("/files/", "/private/files/")):
+        frappe.throw("Attach a file uploaded to this site", frappe.ValidationError)
+    name = frappe.db.get_value("File", {"file_url": file_url})
+    if not name:
+        frappe.throw("File not found", frappe.ValidationError)
+    file_doc = frappe.get_doc("File", name)
+    file_doc.check_permission("read")
+    content = file_doc.get_content()
+    if isinstance(content, str):
+        content = content.encode()
+    if len(content) > MAX_MEDIA_BYTES:
+        frappe.throw("The file is too large to send", frappe.ValidationError)
+    return base64.b64encode(content).decode()
 
 
 def format_options(data):
@@ -88,6 +108,8 @@ class WhatsAppChatMessage(Document):
         url = None
         data = None
         chat_id = self.group_id if self.conversation_type == "Group" else self.user_id
+        if not is_group_contact_access_available(chat_id, self.session):
+            raise frappe.PermissionError("You are not allowed to send to this chat")
         if self.message_type == "Text":
             start_typing_url = "/api/startTyping"
             stop_typing_url = "/api/stopTyping"
@@ -135,7 +157,7 @@ class WhatsAppChatMessage(Document):
                     "file": {
                         "mimetype": self.mime_type,
                         "filename": self.file_name,
-                        "url": self.media_url,
+                        "data": read_media_file(self.media_url),
                     },
                     "caption": self.caption,
                     "session": self.session,
@@ -151,7 +173,7 @@ class WhatsAppChatMessage(Document):
                     "file": {
                         "mimetype": self.mime_type,
                         "filename": self.file_name,
-                        "url": self.media_url,
+                        "data": read_media_file(self.media_url),
                     },
                     "caption": self.caption,
                     "session": self.session,
@@ -166,7 +188,7 @@ class WhatsAppChatMessage(Document):
                     "chatId": chat_id,
                     "file": {
                         "mimetype": self.mime_type,
-                        "url": self.media_url,
+                        "data": read_media_file(self.media_url),
                     },
                     "session": self.session,
                 }
@@ -181,14 +203,17 @@ class WhatsAppChatMessage(Document):
                     "file": {
                         "mimetype": self.mime_type,
                         "filename": self.file_name,
-                        "url": self.media_url,
+                        "data": read_media_file(self.media_url),
                     },
                     "caption": self.caption,
                     "session": self.session,
                 }
             )
 
-        response = waha_api_dispatcher("POST", url, data).json()
+        reply = waha_api_dispatcher("POST", url, data)
+        if reply is None:
+            frappe.throw("Could not reach the WAHA server")
+        response = reply.json()
         update_last_message(
             chat_id,
             self.session,
@@ -242,7 +267,7 @@ def mark_as_seen(name: str, session_id: str):
     chat_id = (
         message_doc.group_id if conversation_type == "Group" else message_doc.user_id
     )
-    if not is_group_contact_access_available(chat_id, session_id):
+    if not is_group_contact_access_available(chat_id, message_doc.session):
         raise frappe.PermissionError(
             "You are not allowed to marked as seen this user message"
         )

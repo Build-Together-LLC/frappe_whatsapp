@@ -2,7 +2,7 @@ import hashlib
 import hmac
 import json
 from datetime import datetime
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 import frappe
 import requests
@@ -25,53 +25,40 @@ received_status_map = {
 }
 
 
+def current_session_status(session_id, reported):
+    """WAHA retries failed webhooks, so an old status can arrive after a newer one. Ask WAHA."""
+    response = waha_api_dispatcher("GET", f"/api/sessions/{quote(session_id, safe='')}", timeout=5)
+    if response is not None and response.ok:
+        return response.json().get("status") or reported
+    return reported
+
+
 def handle_session_status_event(data):
     session_doctype = "WhatsApp Session"
-    payload = data["payload"]
-
-    record_name = frappe.db.get_value(
-        session_doctype, {"name": data["session"]}, "name"
-    )
-
     session_id = data["session"]
+    status = current_session_status(session_id, data["payload"]["status"])
     me = data.get("me")
-    if record_name:
-        if not me:
-            doc = frappe.get_doc(session_doctype, record_name)
-            doc.update(
-                {
-                    "status": payload["status"],
-                    "qr_image_link": f"/api/{session_id}/auth/qr?t = {datetime.now()}",
-                }
-            )
-            doc.save(ignore_permissions=True)
-        if me:
-            push_name = me.get("pushName")
-            if not is_chat_available(me["id"]):
-                save_contact_by_session(me["id"], session_id, push_name)
-            # user_id is a link to WhatsApp Contact, which the call above does not create.
-            ensure_contact_record(me["id"], push_name)
-            doc = frappe.get_doc(session_doctype, record_name)
-            doc.update(
-                {
-                    "status": payload["status"],
-                    "user_id": me["id"],
-                    "user_name": push_name,
-                    "qr_image_link": f"/api/{session_id}/auth/qr?t = {datetime.now()}",
-                }
-            )
-            doc.save(ignore_permissions=True)
+    values = {
+        "status": status,
+        "qr_image_link": f"/api/{quote(session_id, safe='')}/auth/qr?t = {datetime.now()}",
+    }
+    if me:
+        push_name = me.get("pushName")
+        if not is_chat_available(me["id"]):
+            save_contact_by_session(me["id"], session_id, push_name)
+        # user_id is a link to WhatsApp Contact, which the call above does not create.
+        ensure_contact_record(me["id"], push_name)
+        values.update({"user_id": me["id"], "user_name": push_name})
 
-    else:
-        # create new session
-        session_data = {
-            "status": payload["status"],
-            "session_id": session_id,
-            "qr_image_link": f"/api/{session_id}/auth/qr?t = {datetime.now()}",
-        }
-        doc = frappe.new_doc("WhatsApp Session")
-        doc.update(session_data)
-        doc.insert(ignore_permissions=True)
+    record_name = frappe.db.get_value(session_doctype, {"name": session_id}, "name")
+    if record_name:
+        # set_value avoids "document has been modified" conflicts when several events arrive together
+        frappe.db.set_value(session_doctype, record_name, values)
+        return
+
+    doc = frappe.new_doc(session_doctype)
+    doc.update({"session_id": session_id, **values})
+    doc.insert(ignore_permissions=True)
 
 
 def download_media(url):
@@ -85,6 +72,7 @@ def download_media(url):
                 "doctype": "File",
                 "file_name": file_name,
                 "content": response.content,
+                "is_private": 1,
             }
         ).insert(ignore_permissions=True)
         return file_doc
@@ -102,6 +90,7 @@ def download_profile_picture(url):
                 "doctype": "File",
                 "file_name": file_name,
                 "content": response.content,
+                "is_private": 1,
             }
         ).insert(ignore_permissions=True)
         return file_doc
@@ -158,7 +147,7 @@ def save_contact_by_session(user_id, session, fallback_name=None):
     doc.update(data)
     try:
         doc.insert(ignore_permissions=True)
-    except frappe.DuplicateEntryError:
+    except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
         pass
 
 
@@ -167,7 +156,7 @@ def save_group(session, group_id):
         return
     url = f"/api/{session}/groups/{group_id}"
     response = waha_api_dispatcher("GET", url)
-    group_data = response.json()
+    group_data = response.json() if response is not None and response.ok else {}
     participants = []
     file_url = None
     file_doc = get_profile_picture(session, group_id)
@@ -176,6 +165,7 @@ def save_group(session, group_id):
         file_url = file_doc.file_url
     if not group_name:
         group_name = group_data.get("groupMetadata", {}).get("subject")
+    group_name = group_name or group_id
     members = []
 
     for participant in participants:
@@ -193,7 +183,7 @@ def save_group(session, group_id):
     doc.update(data)
     try:
         doc.insert(ignore_permissions=True)
-    except frappe.DuplicateEntryError:
+    except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
         pass
 
 
@@ -244,7 +234,10 @@ def ensure_contact_record(user_id, user_name=None):
 
     doc = frappe.new_doc("WhatsApp Contact")
     doc.update({"user_id": user_id, "user_name": user_name or user_id})
-    doc.insert(ignore_permissions=True)
+    try:
+        doc.insert(ignore_permissions=True)
+    except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
+        pass
 
 
 def update_unread_count(chat_id, session_id):
@@ -463,7 +456,14 @@ def save_message_and_contact_and_group(data, msg_type, user_id):
                 message_data["file_name"] = media.get("filename")
 
         doc.update(message_data)
-        doc.insert(ignore_permissions=True)
+        try:
+            doc.insert(ignore_permissions=True)
+        except (frappe.DuplicateEntryError, frappe.UniqueValidationError):
+            return
+        except frappe.ValidationError as error:
+            if "already exists" in str(error):
+                return
+            raise
         update_unread_count(user_id, session_id)
         update_last_message(
             user_id,
@@ -565,9 +565,7 @@ def handle_chat_archive(data):
 # frappe_whatsapp.personal_whatsapp.api.webhook.handle
 def is_valid_signature(raw_body, signature):
     secret = get_webhook_secret()
-    if not secret:
-        return True
-    if not signature:
+    if not secret or not signature:
         return False
     expected = hmac.new(secret.encode(), raw_body, hashlib.sha512).hexdigest()
     return hmac.compare_digest(expected, signature)
@@ -575,6 +573,8 @@ def is_valid_signature(raw_body, signature):
 
 @frappe.whitelist(allow_guest=True)
 def handle(**kwargs):
+    if not get_webhook_secret():
+        frappe.throw("Webhook secret is not configured", frappe.AuthenticationError)
     signature = frappe.get_request_header("X-Webhook-Hmac")
     if not is_valid_signature(frappe.request.get_data(), signature):
         frappe.throw("Invalid webhook signature", frappe.AuthenticationError)
@@ -595,3 +595,11 @@ def handle(**kwargs):
         handle_message_ack_event(kwargs)
     if event == "chat.archive":
         handle_chat_archive(kwargs)
+
+
+def delete_old_webhook_logs():
+    days = int(frappe.conf.get("waha_webhook_log_days") or 14)
+    frappe.db.delete(
+        "WhatsApp Webhook Log",
+        {"creation": ("<", frappe.utils.add_days(frappe.utils.now(), -days))},
+    )
