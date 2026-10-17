@@ -18,7 +18,7 @@ from frappe_whatsapp.personal_whatsapp.utils import is_admin_user
 
 WAHA_UNREACHABLE_MSG = (
     "Could not reach the WhatsApp (WAHA) server at {host}. "
-    "Check the <b>waha_host</b> setting in site_config.json and that the server is running. "
+    "Check the <b>WAHA Host</b> in WhatsApp Settings and that the server is running. "
     "See the <b>WAHA API request failed</b> Error Log for details."
 )
 
