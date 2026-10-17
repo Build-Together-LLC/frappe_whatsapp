@@ -2,11 +2,13 @@
 # For license information, please see license.txt
 
 import json
+import re
 
 import frappe
 from frappe.model.document import Document
 
 from frappe_whatsapp.personal_whatsapp.api.webhook import save_contact_by_session
+from frappe_whatsapp.personal_whatsapp.config import get_default_country_code
 from frappe_whatsapp.personal_whatsapp.doctype.whatsapp_chat_message.whatsapp_chat_message import (
     format_whatsapp_group_id,
     format_whatsapp_id,
@@ -68,9 +70,18 @@ def create_whatsapp_contact(user_id: str, session: str):
     return "Contact Already Exists"
 
 
+def to_phone_number(raw: str):
+    if "@" in raw:
+        return raw
+    digits = re.sub(r"\D", "", raw).lstrip("0")
+    if len(digits) <= 10:
+        digits = f"{get_default_country_code()}{digits}"
+    return digits
+
+
 @frappe.whitelist()
 def get_whatsapp_contact(user_id: str, session: str):
-    url = f"/api/contacts/check-exists?phone={user_id}&session={session}"
+    url = f"/api/contacts/check-exists?phone={to_phone_number(user_id)}&session={session}"
     response = waha_api_dispatcher("GET", url)
     contact_data = response.json()
     if contact_data["numberExists"]:

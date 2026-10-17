@@ -1,3 +1,5 @@
+import re
+
 import frappe
 from frappe.utils.password import get_decrypted_password
 
@@ -31,3 +33,11 @@ def get_webhook_base_url():
         or frappe.conf.get("localhost_name")
         or frappe.utils.get_url()
     ).rstrip("/")
+
+
+def get_default_country_code():
+    return re.sub(
+        r"\D",
+        "",
+        str(_from_settings("waha_default_country_code") or frappe.conf.get("waha_default_country_code") or "91"),
+    )

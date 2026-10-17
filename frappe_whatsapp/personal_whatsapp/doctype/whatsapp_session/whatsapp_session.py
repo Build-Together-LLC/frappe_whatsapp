@@ -64,7 +64,6 @@ class WhatsAppSession(Document):
                             "url": webhook_url,
                             "events": [
                                 "message.any",
-                                "message",
                                 "session.status",
                                 "message.reaction",
                                 "message.ack",

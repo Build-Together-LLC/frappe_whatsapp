@@ -12,6 +12,7 @@
   "waha_section",
   "waha_host",
   "waha_webhook_base_url",
+  "waha_default_country_code",
   "column_break_waha",
   "waha_api_key",
   "waha_webhook_secret",
@@ -75,13 +76,20 @@
    "fieldname": "test_waha_connection",
    "fieldtype": "Button",
    "label": "Test Connection"
+  },
+  {
+   "default": "91",
+   "description": "Added to numbers typed without a country code when starting a new chat.",
+   "fieldname": "waha_default_country_code",
+   "fieldtype": "Data",
+   "label": "Default Country Code"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "issingle": 1,
  "links": [],
- "modified": "2026-10-17 23:00:00.000000",
+ "modified": "2026-10-17 23:30:00.000000",
  "modified_by": "Administrator",
  "module": "Frappe Whatsapp",
  "name": "WhatsApp Settings",

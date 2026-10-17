@@ -11,6 +11,7 @@ from frappe.model.document import Document
 from frappe.utils import now
 
 from frappe_whatsapp.personal_whatsapp.api.webhook import (
+    get_message_id,
     save_contact_by_session,
     save_group,
     is_chat_available,
@@ -121,7 +122,7 @@ class WhatsAppChatMessage(Document):
                         "options": format_options(self.options),
                         "multipleAnswers": self.multiple_answers,
                     },
-                    "session": self.session_id,
+                    "session": self.session,
                 }
             )
 
@@ -195,10 +196,11 @@ class WhatsAppChatMessage(Document):
             "Outgoing",
             self.body if self.message_type == "Text" else None,
         )
-        if not response.get("_data", {}).get("id", {}).get("id"):
+        message_id = get_message_id(response)
+        if not message_id:
             raise Exception(json.dumps(response))
         self.delete()
-        return response["_data"]["id"]["id"]
+        return message_id
 
 
 def send_personal_whatsapp_message(chat_id: str, session_id: str, body: str):

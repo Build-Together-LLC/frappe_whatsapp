@@ -331,21 +331,92 @@ def update_last_message(
             continue
 
 
+def normalize_jid(address):
+    if address and address.endswith("@s.whatsapp.net"):
+        return address.replace("@s.whatsapp.net", "@c.us")
+    return address
+
+
+def get_message_key(payload):
+    return (payload.get("_data") or {}).get("key") or {}
+
+
+def get_message_id(payload):
+    data = payload.get("_data") or {}
+    return (
+        get_message_key(payload).get("id")
+        or (data.get("id") or {}).get("id")
+        or str(payload.get("id") or "").split("_")[-1]
+        or None
+    )
+
+
+def resolve_chat_address(address, payload, session_id):
+    address = normalize_jid(address)
+    if address and address.endswith("@lid"):
+        alternate = normalize_jid(get_message_key(payload).get("remoteJidAlt"))
+        if alternate and alternate.endswith("@c.us"):
+            return alternate
+    return resolve_lid(address, session_id)
+
+
+def resolve_group_author(payload, session_id):
+    data = payload.get("_data") or {}
+    key = get_message_key(payload)
+    author = normalize_jid(
+        key.get("participantAlt")
+        or key.get("participant")
+        or payload.get("participant")
+        or data.get("author")
+    )
+    return resolve_lid(author, session_id)
+
+
+def get_message_kind(payload):
+    media = payload.get("media")
+    if payload.get("hasMedia") and media:
+        mimetype = media.get("mimetype") or ""
+        if mimetype.startswith("image/"):
+            return "Image"
+        if mimetype.startswith("video/"):
+            return "Video"
+        if mimetype.startswith("audio/"):
+            return "Audio"
+        return "Document"
+    if payload.get("body"):
+        return "Text"
+    return None
+
+
+def get_quoted_message_id(payload):
+    reply_to = payload.get("replyTo") or {}
+    return reply_to.get("id") or (payload.get("_data") or {}).get("quotedStanzaID")
+
+
+def media_path(url):
+    parsed = urlparse(url)
+    return f"{parsed.path}?{parsed.query}" if parsed.query else parsed.path
+
+
 def save_message_and_contact_and_group(data, msg_type, user_id):
     group_suffix = "@g.us"
     user_suffix = "@c.us"
     session_id = data["session"]
     payload = data["payload"]
-    _data = payload["_data"]
-    message_id = _data["id"]["id"]
-    author = resolve_lid(_data.get("author"), session_id)
-    quoted_msg_id = _data.get("quotedStanzaID")
+    message_id = get_message_id(payload)
+    kind = get_message_kind(payload)
+    if not kind or not message_id:
+        return
+    if frappe.db.exists("WhatsApp Chat Message", {"message_id": message_id}):
+        return
+
+    quoted_msg_id = get_quoted_message_id(payload)
     if user_id.endswith(group_suffix) or user_id.endswith(user_suffix):
         if user_id.endswith(group_suffix):
             author = (
                 frappe.get_doc("WhatsApp Session", session_id).user_id
                 if msg_type == "Outgoing"
-                else resolve_lid(_data.get("author"), session_id)
+                else resolve_group_author(payload, session_id)
             )
             if not is_chat_available(user_id):
                 save_group(session_id, user_id)
@@ -374,41 +445,22 @@ def save_message_and_contact_and_group(data, msg_type, user_id):
                     "Group" if user_id.endswith(group_suffix) else "Personal"
                 ),
                 "status": message_status,
-                "quoted_message_id": quoted_msg_id if (quoted_msg_id) else None,
+                "quoted_message_id": quoted_msg_id or None,
             }
         )
-        if quoted_msg_id:
-            doc.update(
-                {
-                    "quoted_message_id": quoted_msg_id,
-                }
-            )
-        message_data = None
-        if _data["type"] == "chat":
+        if kind == "Text":
+            message_data = {"body": payload["body"], "message_type": "Text"}
+        else:
+            media = payload["media"]
+            file_doc = download_media(media_path(media["url"]))
             message_data = {
-                "body": payload["body"],
-                "message_type": "Text",
+                "message_type": kind,
+                "mime_type": media.get("mimetype"),
+                "media_url": file_doc.file_url if file_doc else None,
             }
-        elif _data["type"] in ["image", "video", "document"]:
-            url = payload["media"]["url"].split("3000")[-1]
-            file_doc = download_media(url)
-            message_data = {
-                "caption": _data.get("caption"),
-                "message_type": _data["type"].capitalize(),
-                "mime_type": payload["media"]["mimetype"],
-                "file_name": payload["media"]["filename"],
-                "media_url": file_doc.file_url,
-            }
-        elif _data["type"] == "audio":
-            url = payload["media"]["url"].split("3000")[-1]
-            file_doc = download_media(url)
-            message_data = {
-                "message_type": _data["type"].capitalize(),
-                "mime_type": payload["media"]["mimetype"],
-                "media_url": file_doc.file_url,
-            }
-        elif _data["type"] == "e2e_notification":
-            return
+            if kind != "Audio":
+                message_data["caption"] = payload.get("body")
+                message_data["file_name"] = media.get("filename")
 
         doc.update(message_data)
         doc.insert(ignore_permissions=True)
@@ -416,9 +468,9 @@ def save_message_and_contact_and_group(data, msg_type, user_id):
         update_last_message(
             user_id,
             session_id,
-            "Text" if _data["type"] == "chat" else _data["type"].capitalize(),
+            kind,
             msg_type,
-            payload["body"] if _data["type"] == "chat" else None,
+            payload["body"] if kind == "Text" else None,
         )
     else:
         # Anything not addressed as @c.us or @g.us is dropped here. That used to
@@ -431,50 +483,37 @@ def save_message_and_contact_and_group(data, msg_type, user_id):
         )
 
 
-def handle_message_event(data):
-    if data["payload"]["fromMe"]:
-        return
-    payload = data["payload"]
-    msg_type = "Incoming"
-    user_id = resolve_lid(payload["from"], data["session"])
-    save_message_and_contact_and_group(data, msg_type, user_id)
-
-
 def handle_message_any_event(data):
-    if not data["payload"]["fromMe"]:
-        return
     payload = data["payload"]
-    msg_type = "Outgoing"
-    user_id = resolve_lid(payload["to"], data["session"])
+    session_id = data["session"]
+    if payload.get("fromMe"):
+        address = payload.get("to") or get_message_key(payload).get("remoteJid")
+        msg_type = "Outgoing"
+    else:
+        address = payload.get("from") or get_message_key(payload).get("remoteJid")
+        msg_type = "Incoming"
+    user_id = resolve_chat_address(address, payload, session_id)
+    if not user_id:
+        return
     save_message_and_contact_and_group(data, msg_type, user_id)
 
 
 def update_message_status(data):
     payload = data["payload"]
     ack_name = payload.get("ackName")
-    if not ack_name:
+    message_id = get_message_id(payload)
+    if not ack_name or not message_id:
         return
-    _data = payload["_data"]
-    message_id = _data["id"]["id"]
-    if not frappe.db.exists(
-        "WhatsApp Chat Message",
-        {
-            "message_id": message_id,
-        },
-    ):
+    name = frappe.db.exists("WhatsApp Chat Message", {"message_id": message_id})
+    if not name:
         return
-    wa_message = frappe.get_doc(
-        "WhatsApp Chat Message",
-        {
-            "message_id": message_id,
-        },
-    )
+    wa_message = frappe.get_doc("WhatsApp Chat Message", name)
     wa_message.status = sent_status_map.get(ack_name, "Unknown")
     wa_message.save(ignore_permissions=True)
 
 
 def handle_message_ack_event(data):
-    if not data["payload"]["fromMe"]:
+    if not data["payload"].get("fromMe"):
         return
     update_message_status(data)
 
@@ -550,8 +589,6 @@ def handle(**kwargs):
         frappe.throw("Missing event", frappe.ValidationError)
     if event == "session.status":
         handle_session_status_event(kwargs)
-    if event == "message":
-        handle_message_event(kwargs)
     if event == "message.any":
         handle_message_any_event(kwargs)
     if event == "message.ack":
