@@ -237,6 +237,9 @@ def un_assign_user_to_contact(user: str, chat_id: str):
             return f"error assigning user to contact  {str(e)}"
 
 
+CHAT_DETAIL_FIELDS = ("name", "chat_id", "chat_name", "profile_picture", "type", "mark_as_read")
+
+
 @frappe.whitelist()
 def get_detail(chat_id: str, session: str):
     valid_session(session)
@@ -275,7 +278,11 @@ def get_detail(chat_id: str, session: str):
         or (chat_access and session_has_access)
         or full_access
     ):
-        return contact_doc
+        return {
+            **{field: contact_doc.get(field) for field in CHAT_DETAIL_FIELDS},
+            "chat_assign_to": [row.as_dict() for row in contact_doc.chat_assign_to],
+            "members": [row.as_dict() for row in contact_doc.members],
+        }
     else:
         return f"You don't have access {user} to this contact."
 

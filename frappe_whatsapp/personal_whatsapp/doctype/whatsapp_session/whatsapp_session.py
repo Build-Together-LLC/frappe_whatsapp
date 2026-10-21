@@ -42,6 +42,18 @@ class WhatsAppSession(Document):
         if session_count == 0:
             self.default = 1
 
+    def on_trash(self):
+        if not get_waha_host():
+            return
+        response = waha_api_dispatcher("DELETE", f"/api/sessions/{quote(self.name, safe='')}")
+        if response is None or not (response.ok or response.status_code == 404):
+            frappe.msgprint(
+                f"The session {self.name} was deleted here but could not be removed from the WAHA server. "
+                "Delete it there too.",
+                indicator="orange",
+                alert=True,
+            )
+
     @frappe.whitelist()
     def logout(self):
         url = "/api/sessions/logout"
@@ -96,6 +108,16 @@ class WhatsAppSession(Document):
         if not response.ok:
             return response.text
 
+
+SESSION_FIELDS = (
+    "name",
+    "session_id",
+    "status",
+    "user_id",
+    "user_name",
+    "qr_image_link",
+    "default",
+)
 
 QR_PATH = re.compile(r"^/api/([A-Za-z0-9_-]+)/auth/qr(\?[A-Za-z0-9_=&.%+: -]*)?$")
 
@@ -190,11 +212,10 @@ def get_selected_session(session):
 
     session_data = frappe.get_doc("WhatsApp Session", session)
 
-    if is_system_manager or user == "Administrator":
-        return session_data
-
-    if any(child.user_assign == user for child in session_data.session_assign_to):
-        return session_data
+    if is_system_manager or user == "Administrator" or any(
+        child.user_assign == user for child in session_data.session_assign_to
+    ):
+        return {field: session_data.get(field) for field in SESSION_FIELDS}
 
     return None
 

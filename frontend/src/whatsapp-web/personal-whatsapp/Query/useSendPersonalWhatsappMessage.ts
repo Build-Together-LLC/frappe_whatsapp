@@ -52,45 +52,43 @@ const createVariables = ({
   return data;
 };
 
-const CreateFrappeMessage = async (variables: Variables) => {
-  return window.fetch('/api/resource/WhatsApp Chat Message', {
+const sendChatMessage = async (variables: Variables) => {
+  const { session, message_type, group_id, user_id, ...rest } =
+    createVariables(variables);
+  const response = await window.fetch(
+    '/api/method/frappe_whatsapp.personal_whatsapp.doctype.whatsapp_chat_message.whatsapp_chat_message.send_chat_message',
+    {
       method: 'POST',
-      body: JSON.stringify(variables),
       headers: {
+        'Content-Type': 'application/json',
         'X-Frappe-Csrf-Token': window?.frappe?.csrf_token,
       },
-    })
-    .then((res) => res.json());
-};
-
-const sendPersonalWhatsappMessage = (data: any) => {
-  const myHeaders = new Headers();
-  myHeaders.append('accept', 'application/json');
-  myHeaders.append('accept-language', 'en-US,en;q=0.9');
-  myHeaders.append(
-    'content-type',
-    'application/x-www-form-urlencoded; charset=UTF-8'
+      body: JSON.stringify({
+        session,
+        message_type,
+        chat_id: group_id || user_id,
+        body: rest.body,
+        mime_type: rest.mime_type,
+        media_url: rest.media_url,
+        file_name: rest.file_name,
+        caption: rest.caption,
+        scheduled_at: variables.scheduled_at,
+      }),
+    }
   );
-
-  myHeaders.append('X-Frappe-Csrf-Token', window?.frappe?.csrf_token);
-
-  const body = `docs=${encodeURIComponent(JSON.stringify(data))}&method=send`;
-  return window.fetch('/api/method/run_doc_method', {
-      method: 'POST',
-      headers: myHeaders,
-      body: body,
-    })
-    .then((res) => res.json());
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data?._server_messages || data?.exception || 'Send failed');
+  }
+  return data;
 };
+
 const useSendPersonalWhatsappMessage = (isSchedule = false) => {
   return useMutation({
     mutationFn: (variables: Variables) =>
-      CreateFrappeMessage(createVariables(variables)).then((data) => {
-        if (!isSchedule) {
-          sendPersonalWhatsappMessage(data?.data);
-        }
-        return data;
-      }),
+      sendChatMessage(
+        isSchedule ? variables : { ...variables, scheduled_at: null }
+      ),
   });
 };
 

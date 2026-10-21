@@ -9,7 +9,7 @@ from datetime import datetime
 
 import frappe
 from frappe.model.document import Document
-from frappe.utils import now
+from frappe.utils import get_datetime, now
 
 from frappe_whatsapp.personal_whatsapp.api.webhook import (
     get_message_id,
@@ -22,10 +22,13 @@ from frappe_whatsapp.personal_whatsapp.api.webhook import (
 from frappe_whatsapp.personal_whatsapp.api.groups_and_contacts import (
     is_group_contact_access_available,
 )
+from frappe_whatsapp.personal_whatsapp.config import get_default_country_code
+from frappe_whatsapp.personal_whatsapp.security import valid_chat_id, valid_session
 from frappe_whatsapp.personal_whatsapp.utils import waha_api_dispatcher
 
 
 MAX_MEDIA_BYTES = 16 * 1024 * 1024
+MESSAGE_TYPES = ("Text", "Poll", "Image", "Video", "Audio", "Document")
 
 
 def read_media_file(file_url):
@@ -57,7 +60,7 @@ def format_options(data):
 def format_whatsapp_id(number_or_id):
     if "@" not in number_or_id:
         if len(number_or_id) == 10:
-            number_or_id = "91" + number_or_id
+            number_or_id = get_default_country_code() + number_or_id
         number_or_id = number_or_id + "@c.us"
     return number_or_id
 
@@ -228,9 +231,8 @@ class WhatsAppChatMessage(Document):
         return message_id
 
 
-def send_personal_whatsapp_message(chat_id: str, session_id: str, body: str):
-    group_suffix = "@g.us"
-    is_group = chat_id.endswith(group_suffix)
+def create_outgoing_message(chat_id: str, session_id: str, **fields):
+    is_group = chat_id.endswith("@g.us")
     session_user_id = frappe.db.get_value("WhatsApp Session", session_id, "user_id")
     recipient_group_id = chat_id if is_group else None
     recipient_user_id = session_user_id if is_group else chat_id
@@ -244,20 +246,69 @@ def send_personal_whatsapp_message(chat_id: str, session_id: str, body: str):
     if recipient_user_id and not is_chat_available(recipient_user_id):
         save_contact_by_session(recipient_user_id, session_id)
 
-    message_data = {
-        "session": session_id,
-        "body": body,
-        "user_id": recipient_user_id,
-        "type": "Outgoing",
-        "group_id": recipient_group_id,
-        "conversation_type": "Group" if is_group else "Personal",
-        "message_type": "Text",
-    }
     doc = frappe.new_doc("WhatsApp Chat Message")
-    doc.update(message_data)
+    doc.update(
+        {
+            "session": session_id,
+            "user_id": recipient_user_id,
+            "type": "Outgoing",
+            "group_id": recipient_group_id,
+            "conversation_type": "Group" if is_group else "Personal",
+            **fields,
+        }
+    )
     doc.insert(ignore_permissions=True)
+    return doc
+
+
+def send_personal_whatsapp_message(chat_id: str, session_id: str, body: str):
+    doc = create_outgoing_message(
+        chat_id, session_id, body=body, message_type="Text"
+    )
     doc.send()
     return True
+
+
+@frappe.whitelist()
+def send_chat_message(
+    session,
+    chat_id,
+    message_type="Text",
+    body=None,
+    mime_type=None,
+    media_url=None,
+    file_name=None,
+    caption=None,
+    poll_name=None,
+    options=None,
+    multiple_answers=0,
+    scheduled_at=None,
+):
+    valid_session(session)
+    valid_chat_id(chat_id)
+    if message_type not in MESSAGE_TYPES:
+        frappe.throw("Invalid message type", frappe.ValidationError)
+    if not is_group_contact_access_available(chat_id, session):
+        raise frappe.PermissionError("You are not allowed to send to this chat")
+    fields = {
+        "message_type": message_type,
+        "body": body,
+        "mime_type": mime_type,
+        "media_url": media_url,
+        "file_name": file_name,
+        "caption": caption,
+        "poll_name": poll_name,
+        "options": options,
+        "multiple_answers": frappe.utils.cint(multiple_answers),
+    }
+    if scheduled_at:
+        fields.update({"status": "Scheduled", "scheduled_at": get_datetime(scheduled_at)})
+    elif message_type == "Text" and not (body or "").strip():
+        frappe.throw("Message cannot be empty", frappe.ValidationError)
+    doc = create_outgoing_message(chat_id, session, **fields)
+    if scheduled_at:
+        return doc.name
+    return doc.send()
 
 
 @frappe.whitelist()

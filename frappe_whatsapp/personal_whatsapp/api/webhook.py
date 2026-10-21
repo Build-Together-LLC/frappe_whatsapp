@@ -6,6 +6,7 @@ from urllib.parse import quote, urlparse
 
 import frappe
 import requests
+from frappe.rate_limiter import rate_limit
 from frappe.utils import now
 
 from frappe_whatsapp.personal_whatsapp.config import get_webhook_secret
@@ -571,7 +572,12 @@ def is_valid_signature(raw_body, signature):
     return hmac.compare_digest(expected, signature)
 
 
+def webhook_rate_limit():
+    return int(frappe.conf.get("waha_webhook_rate_limit") or 1200)
+
+
 @frappe.whitelist(allow_guest=True)
+@rate_limit(limit=webhook_rate_limit, seconds=60)
 def handle(**kwargs):
     if not get_webhook_secret():
         frappe.throw("Webhook secret is not configured", frappe.AuthenticationError)
