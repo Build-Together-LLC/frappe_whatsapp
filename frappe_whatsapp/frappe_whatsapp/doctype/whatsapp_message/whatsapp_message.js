@@ -28,33 +28,39 @@ function show_incoming_message(frm) {
 
 	const preview = frm.get_field("incoming_message_preview");
 	if (!preview) return;
-	const $preview = preview.$wrapper;
-	$preview.empty();
 
-	if (frm.doc.message) {
-		$("<div>")
-			.addClass("well")
-			.css("white-space", "pre-wrap")
-			.text(frm.doc.message)
-			.appendTo($preview);
+	// Build the preview off-DOM and hand it to the control as its content. Writing straight into
+	// the control's wrapper was lost on the first load: the form re-renders the HTML control from
+	// its (empty) options after refresh, which wiped the text and left the Message blank.
+	const $preview = $("<div>");
+	// An HTML control draws no label of its own, so the text appeared as a bare line with no
+	// "Message" caption above it and the field looked like it had vanished.
+	$("<label>").addClass("control-label").text(__("Message")).appendTo($preview);
+
+	$("<div>")
+		.addClass("well")
+		.css({ "white-space": "pre-wrap", "min-height": "6rem", "margin-bottom": "0.5rem" })
+		.text(frm.doc.message || __("(no text)"))
+		.appendTo($preview);
+
+	if (frm.doc.attach) {
+		const file_url = encodeURI(frm.doc.attach);
+		if (frm.doc.content_type === "image") {
+			$("<a>", { href: file_url, target: "_blank", rel: "noopener" })
+				.append($("<img>", { src: file_url, alt: __("Incoming image") }).css({ "max-width": "100%", "max-height": "32rem" }))
+				.appendTo($preview);
+		} else if (frm.doc.content_type === "video") {
+			$("<video>", { src: file_url, controls: true }).css("max-width", "100%").appendTo($preview);
+		} else if (frm.doc.content_type === "audio") {
+			$("<audio>", { src: file_url, controls: true }).css("width", "100%").appendTo($preview);
+		} else {
+			$("<a>", { href: file_url, target: "_blank", rel: "noopener", text: __("Open attachment") })
+				.addClass("btn btn-default btn-sm")
+				.appendTo($preview);
+		}
 	}
 
-	if (!frm.doc.attach) return;
-
-	const file_url = encodeURI(frm.doc.attach);
-	if (frm.doc.content_type === "image") {
-		$("<a>", { href: file_url, target: "_blank", rel: "noopener" })
-			.append($("<img>", { src: file_url, alt: __("Incoming image") }).css({ "max-width": "100%", "max-height": "32rem" }))
-			.appendTo($preview);
-	} else if (frm.doc.content_type === "video") {
-		$("<video>", { src: file_url, controls: true }).css("max-width", "100%").appendTo($preview);
-	} else if (frm.doc.content_type === "audio") {
-		$("<audio>", { src: file_url, controls: true }).css("width", "100%").appendTo($preview);
-	} else {
-		$("<a>", { href: file_url, target: "_blank", rel: "noopener", text: __("Open attachment") })
-			.addClass("btn btn-default btn-sm")
-			.appendTo($preview);
-	}
+	preview.html($preview.html());
 }
 
 // custom button
